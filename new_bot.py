@@ -1,20 +1,16 @@
 import discord
 import os
-import json
 from just_eat_scraper import FoodDelivery
 import re
 import asyncio
 
-jsonData = open("token.json")
-tokenObj = json.load(jsonData)
-jsonData.close()
+fastFood = FoodDelivery()
 
-bot_token = tokenObj['DISCORD_TOKEN']
-guild_name = tokenObj["DISCORD_GUILD"]
+bot_token, guild_name = fastFood.get_bot_tokens("token.json")
 
 client = discord.Client()
 
-fastFood = FoodDelivery()
+
 
 
 
@@ -60,7 +56,7 @@ async def on_message(message):
 
             else:
                 usedEmojis.append(emojiArr[i])
-                restaurantChoice[emojiArr[i]] = {"Name": restaurants[i]["Name"], "Id":restaurants[i]["Id"]}
+                restaurantChoice[emojiArr[i]] = {"Name": restaurants[i]["Name"], "Id":restaurants[i]["Id"], "MenuId":restaurants[i]["CollectionMenuId"]}
                 embedVar.add_field(name=restaurants[i]["Name"] + " " + emojiArr[i], value="Stengt", inline=False)
            
 
@@ -83,7 +79,7 @@ async def on_message(message):
                 await message.channel.send("henter meny fra " + restaurant_name)
 
                 # makes the menu from the menu dictionary from the api
-                pages, contents = create_menu_pages(discord, menu, restaurant_name)
+                pages, contents, food_emojis = create_menu_pages(discord, menu, restaurant_name, emojiArr)
         
         # amount of pages it changes when emoji is clicked
         cur_page = 1
@@ -91,12 +87,18 @@ async def on_message(message):
         message_menu = await message.channel.send(f"Page {cur_page}/{pages}", embed = contents[cur_page-1])
         # getting the message object for editing and reacting
 
+        # adding emojis the menu embed message
         await message_menu.add_reaction("◀️")
         await message_menu.add_reaction("▶️")
+        await message_menu.add_reaction("👍")
+        for emoji in food_emojis["0"].keys():
+            await message_menu.add_reaction(emoji)
 
         def check(reaction, user):
-            return user == message.author and str(reaction.emoji) in ["◀️", "▶️"]
+            return user == message.author and str(reaction.emoji) in ["◀️", "▶️", "👍"] + emojiArr
             # This makes sure nobody except the command sender can interact with the "menu"
+
+        chosen_menu_items = []
 
         while True:
             try:
@@ -113,6 +115,22 @@ async def on_message(message):
                     cur_page -= 1
                     await message_menu.edit(content=f"Page {cur_page}/{pages}:", embed = contents[cur_page-1])
                     await message_menu.remove_reaction(reaction, user)
+                    
+                # finished choosing the items
+                elif str(reaction.emoji) == "👍" and cur_page:
+                    await message.channel.send("Du har valgt følgende")
+                    for item in chosen_menu_items:
+                        await message.channel.send(item)
+
+                elif str(reaction.emoji) in food_emojis[str(cur_page - 1)].keys():
+                    name = "Name"
+                    id_name = "Id"
+                    # adds the menu items chosen from the discord chat
+                    item_name = food_emojis[str(cur_page - 1)][str(reaction.emoji)][name]
+                    food_id = food_emojis[str(cur_page - 1)][str(reaction.emoji)][id_name]
+                    await message.channel.send(f"{item_name} har blitt lagt til ")
+                    chosen_menu_items.append((item_name, food_id[0]))
+                    
 
                 else:
                     await message_menu.remove_reaction(reaction, user)
@@ -131,27 +149,47 @@ async def on_message(message):
 
 
 
-def create_menu_pages(discord, menu_dict, restaurant_name):
+def create_menu_pages(discord, menu_dict, restaurant_name, emoji_arr):
     contents = []
     pages = 0
-    max_items = 23
+    max_items = 17
+    emoji_index = 0
     embed_menu = discord.Embed(title="meny for " + restaurant_name, description="Meny", color=0x00ff00)
+    used_emojis_food = {}
 
+    # loops thorugh the menu dictionary to make the emnu embed for the selected restaurant
     for i in range(len(menu_dict)):
+        # for each 23rd item a new embed will be made which will be one page
         if i == max_items:
+            emoji_index = 0
             embed_menu = discord.Embed(title="meny for " + restaurant_name, description="Meny", color=0x00ff00)
             max_items += max_items
             pages += 1
-        
+
+        if str(pages) not in used_emojis_food.keys():
+            used_emojis_food[str(pages)] = {}
+            
+        if not menu_dict[i]["Desc"]:
+            embed_menu.add_field(name=menu_dict[i]["Name"] + " " +  emoji_arr[emoji_index], value=i, inline=True)
+            used_emojis_food[str(pages)][emoji_arr[emoji_index]] = {"Name":menu_dict[i]["Name"], "Id":[menu_dict[i]["Id"]]}
+
         if menu_dict[i]["Desc"]:
-            embed_menu.add_field(name=menu_dict[i]["Name"], value=menu_dict[i]["Desc"], inline=True)
-        else:
-            embed_menu.add_field(name=menu_dict[i]["Name"], value=i, inline=True)
+            # adds each item as a field in the embed
+            embed_menu.add_field(name=menu_dict[i]["Name"] + "(" + menu_dict[i]["Syn"] +  ") " + emoji_arr[emoji_index], value=menu_dict[i]["Desc"], inline=True)
+            used_emojis_food[str(pages)][emoji_arr[emoji_index]] = {"Name":menu_dict[i]["Name"] + " " + menu_dict[i]["Syn"], "Id":[menu_dict[i]["Id"]]}
+                    
 
         if i == (max_items - 1):
             contents.append(embed_menu)
 
-    return pages, contents 
+        emoji_index += 1
+
+    return pages, contents, used_emojis_food
+
+
+    # def check_emoji(emoji, used_emojis):
+
+
 
 
 

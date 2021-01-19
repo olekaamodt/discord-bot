@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 import json
 import pprint
+import json
 
 pp = pprint.PrettyPrinter()
 
@@ -21,8 +22,8 @@ class FoodDelivery:
     
 
 
-    def get_menu(self, restaurant_id):
-        menu_url = f"https://www.just-eat.no/menu/getproductsformenu?menuId={restaurant_id}"
+    def get_menu(self, menu_id):
+        menu_url = f"https://www.just-eat.no/menu/getproductsformenu?menuId={menu_id}"
         menu = self.session.get(menu_url, headers = self.headers)
         current_menu = {"produkter":menu.json()["Menu"]["products"], "tilbehør":menu.json()["Menu"]["accessories"]}
         return current_menu["produkter"]
@@ -32,6 +33,18 @@ class FoodDelivery:
     def add_to_cart(self):
         body = "restaurantId=2915&menuId=7419&productId=416281"
         session.post(url, body = body, headers = self.headers)
+
+    
+    def get_bot_tokens(self, file):
+        jsonData = open(file)
+        tokenObj = json.load(jsonData)
+        jsonData.close()
+
+        bot_token = tokenObj['DISCORD_TOKEN']
+        guild_name = tokenObj["DISCORD_GUILD"]
+
+        return bot_token, guild_name
+
         
 
 food = FoodDelivery()
