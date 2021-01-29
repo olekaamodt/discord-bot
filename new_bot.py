@@ -44,6 +44,7 @@ async def on_message(message):
         restaurantChoice = {}
 
         embedVar = discord.Embed(title="Restaurants near " + postalCode, description="Restauranger", color=0x00ff00)
+        index = 0
         for i in range(len(restaurants)):
             
             if restaurants[i]["IsOpenNow"]:
@@ -58,6 +59,9 @@ async def on_message(message):
                 usedEmojis.append(emojiArr[i])
                 restaurantChoice[emojiArr[i]] = {"Name": restaurants[i]["Name"], "Id":restaurants[i]["Id"], "MenuId":restaurants[i]["CollectionMenuId"]}
                 embedVar.add_field(name=restaurants[i]["Name"] + " " + emojiArr[i], value="Stengt", inline=False)
+            index += 1
+            if index == 19:
+                break
            
 
         msg = await message.channel.send("Velg Restaurant", embed = embedVar)
@@ -70,8 +74,12 @@ async def on_message(message):
         
         for reaction in msg.reactions:
             if reaction.count == 2:
+                # gets the chosen restaurant name
                 restaurant_name = restaurantChoice[reaction.emoji]["Name"]
 
+                # gets the chosen restaurantId
+                chosen_restaurant_id = restaurantChoice[reaction.emoji]["Id"]
+                
                 #fetches the menu from the just eat rest API
                 menu = fastFood.get_menu(restaurantChoice[reaction.emoji]["MenuId"])
 
@@ -83,8 +91,8 @@ async def on_message(message):
         
         # amount of pages it changes when emoji is clicked
         cur_page = 1
-
-        message_menu = await message.channel.send(f"Page {cur_page}/{pages}", embed = contents[cur_page-1])
+        
+        message_menu = await message.channel.send(f"Page {cur_page}/{pages}", embed = contents[cur_page -1])
         # getting the message object for editing and reacting
 
         # adding emojis the menu embed message
@@ -121,6 +129,7 @@ async def on_message(message):
                     await message.channel.send("Du har valgt følgende")
                     for item in chosen_menu_items:
                         await message.channel.send(item)
+                    break
 
                 elif str(reaction.emoji) in food_emojis[str(cur_page - 1)].keys():
                     name = "Name"
@@ -141,6 +150,14 @@ async def on_message(message):
                 await message_menu.delete()
                 break
                 # ending the loop if user doesn't react after x seconds
+
+            for item in chosen_menu_items:
+                print("test")
+                #adding the menuID, restaurantID and foodID to http request
+                fastFood.add_to_cart(chosen_restaurant_id, item[1])
+
+        
+        
 
         #menuEmbed = create_menu_embed(menuEmbed, menu)
         #menu_msg = await message.channel.send("Velg produkt", embed = menuEmbed)
