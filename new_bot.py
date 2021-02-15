@@ -3,6 +3,8 @@ import os
 from just_eat_scraper import FoodDelivery
 import re
 import asyncio
+from seleniumLogin import login_and_pay
+
 
 fastFood = FoodDelivery()
 
@@ -151,11 +153,12 @@ async def on_message(message):
                 break
                 # ending the loop if user doesn't react after x seconds
 
-            for item in chosen_menu_items:
-                print("test")
-                #adding the menuID, restaurantID and foodID to http request
-                fastFood.add_to_cart(chosen_restaurant_id, item[1])
-
+        for item in chosen_menu_items:
+            print("test")
+            #adding the menuID, restaurantID and foodID to http request
+            login_url, cookie = fastFood.add_to_cart(chosen_restaurant_id, item[1])
+        
+        login_and_pay(login_url, cookie)
         
         
 

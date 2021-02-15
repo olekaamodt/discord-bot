@@ -3,6 +3,7 @@ import requests
 import json
 import pprint
 import json
+from bs4 import BeautifulSoup as bs
 
 pp = pprint.PrettyPrinter()
 
@@ -14,7 +15,7 @@ class FoodDelivery:
 
 
     def get_all_restaurants(self, postalNr):
-        headers = headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',"accept-tenant": "no"}
+        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',"accept-tenant": "no"}
         response = self.session.get(self.base_url_postCode + postalNr, headers = headers)
         self.restaurants = response.json()
         
@@ -35,8 +36,13 @@ class FoodDelivery:
         request_url = f"https://www.just-eat.no/restaurant/{restaurant_id}/menu/{self.menu_id}/basket/item"
 
         req_object = {"restaurantId":restaurant_id,"menuId":self.menu_id, "productId":product_id}
-        print(req_object)
-        res = self.session.post(request_url, data = req_object, headers = self.headers)
+        
+        res = self.session.post(request_url, data = req_object, headers = self.headers, cookies = self.session.cookies.get_dict())
+        html = bs(res.content, "html.parser")
+        self.basket_id = html.find("div", {"class":"infoBox-content infoBox-content--small"}).get("data-basketreceipt-id")
+
+        return f"https://www.just-eat.no/account/login?returnurl=%2Forder%2Fdelivery-address%2F%3Fmenu%3D746%26basket%3D{self.basket_id}sQ%26collection%3DFalse", self.session.cookies
+        
        
 
     # funker ikke
@@ -47,24 +53,38 @@ class FoodDelivery:
         self.email = tokenObj["EMAIL"]
         self.password = tokenObj["PASSWORD"]
 
-        request_url = f"https://www.just-eat.no/account/login?returnurl=%2Forder%2Fuser-details%2F%3Fmenu%3D746%26basket%{self.session.cookies.get_dict()['nlbi_383580']}%26collection%3DFalse"
+        request_url = f"https://www.just-eat.no/account/login?returnurl=%2Forder%2Fuser-details%2F%3Fmenu%3D746%26basket%3D{self.basket_id}%26collection%3DFalse"
+
+        get_login_page = self.session.get(request_url, headers = self.headers, cookies = self.session.cookies.get_dict())
+
+        login_page = bs(get_login_page.content, "html.parser")
+        verification_token = login_page.find("input", {"name": "__RequestVerificationToken"}).get("value")
+        print(verification_token)
+
+
         payload = {
-            "_RequestVerificationToken":self.session.cookies.get_dict()["'nlbi_383580'"],
+            "__RequestVerificationToken": verification_token,
             "Email":self.email,
             "Password":self.password,
             "RememberMe":"True",
             "RememberMe":"False"
         }
 
-        session.post(request_url, data = payload, headers = self.headers)
-        print(res.text)
+        login_req_url = f"https://www.just-eat.no/order/delivery-address/?menu=746&basket={self.basket_id}&collection=False"
+
+        res = self.session.post(login_req_url, headers = self.headers, cookies = self.session.cookies.get_dict())
+        html = bs(res.content, "html.parser")
+        print(html)
+
 
 
 
     #funker ikke
     def make_payment(self):
-        request_url = f"https://www.just-eat.no/order/delivery-address/?menu={self.menu_id}&basket={self.cookie}g&collection=False"
-        res = session.get(request_url, headers = self.headers)
+        request_url = f"https://www.just-eat.no/order/delivery-address/?menu={self.menu_id}&basket={self.basket_id}g&collection=False"
+        
+        res = session.get(request_url, headers = self.headers, cookies = self.session.cookies.get_dict())
+        print(bs(res.content, "html.parser"))
 
 
     
@@ -82,7 +102,7 @@ class FoodDelivery:
 
 food = FoodDelivery()
 
-foodId = food.get_all_restaurants("1482")[0]["CollectionMenuId"]
+#foodId = food.get_all_restaurants("1482")[0]["CollectionMenuId"]
 #menu = food.get_menu(foodId)
 
 
