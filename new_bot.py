@@ -53,13 +53,13 @@ async def on_message(message):
                 usedEmojis.append(emojiArr[i])
 
                 #makes embed for all open restaurants in the area
-                restaurantChoice[emojiArr[i]] = {"Name": restaurants[i]["Name"], "Id":restaurants[i]["Id"], "MenuId":restaurants[i]["CollectionMenuId"]}
+                restaurantChoice[emojiArr[i]] = {"Name": restaurants[i]["Name"], "Id":restaurants[i]["Id"], "MenuId":restaurants[i]["CollectionMenuId"], "url":restaurants[i]["Url"]}
 
                 embedVar.add_field(name=restaurants[i]["Name"] + " " + emojiArr[i], value="Åpent", inline=False)
 
             else:
                 usedEmojis.append(emojiArr[i])
-                restaurantChoice[emojiArr[i]] = {"Name": restaurants[i]["Name"], "Id":restaurants[i]["Id"], "MenuId":restaurants[i]["CollectionMenuId"]}
+                restaurantChoice[emojiArr[i]] = {"Name": restaurants[i]["Name"], "Id":restaurants[i]["Id"], "MenuId":restaurants[i]["CollectionMenuId"], "url":restaurants[i]["Url"]}
                 embedVar.add_field(name=restaurants[i]["Name"] + " " + emojiArr[i], value="Stengt", inline=False)
             index += 1
             if index == 19:
@@ -76,8 +76,9 @@ async def on_message(message):
         
         for reaction in msg.reactions:
             if reaction.count == 2:
-                # gets the chosen restaurant name
+                # gets the chosen restaurant name and url
                 restaurant_name = restaurantChoice[reaction.emoji]["Name"]
+                restaurant_url = restaurantChoice[reaction.emoji]["url"]
 
                 # gets the chosen restaurantId
                 chosen_restaurant_id = restaurantChoice[reaction.emoji]["Id"]
@@ -209,20 +210,6 @@ def create_menu_pages(discord, menu_dict, restaurant_name, emoji_arr):
 
     # def check_emoji(emoji, used_emojis):
 
-
-
-
-
-
-        
-
-
-
-
-
-
-
-            
 
 
 client.run(bot_token)

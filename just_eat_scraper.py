@@ -37,11 +37,11 @@ class FoodDelivery:
 
         req_object = {"restaurantId":restaurant_id,"menuId":self.menu_id, "productId":product_id}
         
-        res = self.session.post(request_url, data = req_object, headers = self.headers, cookies = self.session.cookies.get_dict())
+        res = self.session.post(request_url, data = req_object, headers = self.headers, cookies = self.session.cookies)
         html = bs(res.content, "html.parser")
         self.basket_id = html.find("div", {"class":"infoBox-content infoBox-content--small"}).get("data-basketreceipt-id")
 
-        return f"https://www.just-eat.no/account/login?returnurl=%2Forder%2Fdelivery-address%2F%3Fmenu%3D746%26basket%3D{self.basket_id}sQ%26collection%3DFalse", self.session.cookies
+        return f"https://www.just-eat.no/account/login?returnurl=%2Forder%2Fdelivery-address%2F%3Fmenu%3D746%26basket%3D{self.basket_id}sQ%26collection%3DFalse", res.cookies
         
        
 
@@ -53,26 +53,52 @@ class FoodDelivery:
         self.email = tokenObj["EMAIL"]
         self.password = tokenObj["PASSWORD"]
 
-        request_url = f"https://www.just-eat.no/account/login?returnurl=%2Forder%2Fuser-details%2F%3Fmenu%3D746%26basket%3D{self.basket_id}%26collection%3DFalse"
+        request_url = f"https://www.just-eat.no/account/login/?returnurl=%2F"
 
         get_login_page = self.session.get(request_url, headers = self.headers, cookies = self.session.cookies.get_dict())
 
+        self.cookies = get_login_page.cookies
+
         login_page = bs(get_login_page.content, "html.parser")
         verification_token = login_page.find("input", {"name": "__RequestVerificationToken"}).get("value")
-        print(verification_token)
 
+        cookie_string = ""
+        for cookie in get_login_page.cookies:
+            if cookie.name == "__RequestVerificationToken":
+                request_token = cookie.value
+            cookie_string += (cookie.name + "=" + cookie.value + "; ")
 
-        payload = {
-            "__RequestVerificationToken": verification_token,
-            "Email":self.email,
-            "Password":self.password,
-            "RememberMe":"True",
-            "RememberMe":"False"
+       
+        
+        print(cookie_string.rstrip(";"))
+
+        login_headers = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Accept-Language": "nb-NO,nb;q=0.9,no;q=0.8,nn;q=0.7,en-US;q=0.6,en;q=0.5",
+            "Cache-Control": "max-age=0",
+            "Connection": "keep-alive",
+            "Content-Length": "200",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Cookie": cookie_string,
+            "Host": "www.just-eat.no",
+            "Origin": "https://www.just-eat.no",
+            "Referer": "https://www.just-eat.no/account/login/?returnUrl=%2F",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36"
         }
 
-        login_req_url = f"https://www.just-eat.no/order/delivery-address/?menu=746&basket={self.basket_id}&collection=False"
 
-        res = self.session.post(login_req_url, headers = self.headers, cookies = self.session.cookies.get_dict())
+        
+
+        login_req_url = f"https://www.just-eat.no/account/login/?returnUrl=%2F"
+
+        res = self.session.post(login_req_url, headers = login_headers, cookies = get_login_page.cookies)
+        print(res)
         html = bs(res.content, "html.parser")
         print(html)
 
@@ -83,7 +109,7 @@ class FoodDelivery:
     def make_payment(self):
         request_url = f"https://www.just-eat.no/order/delivery-address/?menu={self.menu_id}&basket={self.basket_id}g&collection=False"
         
-        res = session.get(request_url, headers = self.headers, cookies = self.session.cookies.get_dict())
+        res = session.get(request_url, headers = self.headers, cookies = self.session.cookies)
         print(bs(res.content, "html.parser"))
 
 
@@ -102,7 +128,8 @@ class FoodDelivery:
 
 food = FoodDelivery()
 
-#foodId = food.get_all_restaurants("1482")[0]["CollectionMenuId"]
+#foodId = food.get_all_restaurants("1482")
+
 #menu = food.get_menu(foodId)
 
 
